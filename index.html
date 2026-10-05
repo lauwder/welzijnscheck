@@ -30,6 +30,8 @@
 
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:22px 0 0}
 .toolbar .tabs{margin:0}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.empty .acts{margin-top:4px}
 .btn.small{min-height:40px;padding:8px 16px;font-size:.92rem}
 .install{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between;margin-top:28px;padding:14px 18px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}
 .install p{color:var(--muted);font-size:.93rem;max-width:60ch}
@@ -315,7 +317,7 @@ details.look summary:focus-visible{outline:3px solid var(--focus);outline-offset
 
     <div id="emptyBox" class="empty" hidden>
       <p>Je hebt nog geen check-ins. Bewaar je eerste check-in hierboven, of kijk eerst hoe trends eruitzien met voorbeelddata van zes weken.</p>
-      <button type="button" class="btn ghost" id="demoBtn">Laad voorbeelddata</button>
+      <div class="acts"><button type="button" class="btn ghost" id="demoBtn">Laad voorbeelddata</button><button type="button" class="btn ghost" id="importBtn2">Importeer uit Excel</button></div>
     </div>
 
     <div id="dataBox" hidden>
@@ -323,7 +325,7 @@ details.look summary:focus-visible{outline:3px solid var(--focus);outline-offset
         <button type="button" class="tab" data-range="7" aria-pressed="false">7 dagen</button>
         <button type="button" class="tab" data-range="30" aria-pressed="true">30 dagen</button>
         <button type="button" class="tab" data-range="0" aria-pressed="false">Alles</button>
-      </div><button type="button" class="btn ghost small" id="exportBtn">Exporteer naar Excel</button></div>
+      </div><div class="acts"><button type="button" class="btn ghost small" id="exportBtn">Exporteer naar Excel</button><button type="button" class="btn ghost small" id="importBtn">Importeer uit Excel</button></div></div>
       <div class="chartwrap"><svg id="chart" viewBox="0 0 680 260" role="img" aria-label="Welzijnsscore in procenten over tijd"></svg></div>
       <div class="readout" id="readout" aria-live="polite"></div>
 
@@ -341,6 +343,7 @@ details.look summary:focus-visible{outline:3px solid var(--focus);outline-offset
   </section>
   </main>
 
+  <input type="file" id="importFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
   <div id="installBox" class="install" hidden>
     <p id="installText"></p>
     <div class="acts">
@@ -930,6 +933,42 @@ async function exportExcel(){
   finally{b.disabled=false;b.textContent=old}
 }
 $('exportBtn').addEventListener('click',exportExcel);
+
+/* ---------- import uit Excel ---------- */
+async function importExcel(file){
+  try{
+    await loadXlsx();
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array',cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames.includes('Check-ins')?'Check-ins':wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+    const head=(rows[0]||[]).map(x=>String(x).trim());
+  const want=['Datum',...FACTORS.map(f=>f.naam)];
+  const dkey=v=>{if(v instanceof Date&&!isNaN(v))return toKey(v);
+    if(typeof v==='number'){const o=XLSX.SSF.parse_date_code(v);return o?o.y+'-'+pad(o.m)+'-'+pad(o.d):null}
+    const t=String(v||'').trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+'-'+m[2]+'-'+m[3];
+    m=t.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);if(m)return m[3]+'-'+pad(m[1])+'-'+pad(m[2]);return null};
+  const mk=(row)=>{const d=dkey(row[0]);if(!d)return null;
+    const sc=FACTORS.map((_,i)=>parseInt(String(row[i+1]).trim(),10));if(sc.some(v=>!(v>=1&&v<=5)))return null;return {date:d,s:sc}};
+    if(want.some((h,i)=>head[i]!==h)){flash('Dit bestand komt niet uit Welzijnscheck: de kolommen kloppen niet.');return}
+    let added=0,updated=0,skipped=0;
+    for(const row of rows.slice(1)){
+      if(!row.some(c=>String(c).trim()!==''))continue;
+      const e=mk(row);if(!e){skipped++;continue}
+      const i=entries.findIndex(x=>x.date===e.date);
+      if(i>=0){entries[i]=e;updated++}else{entries.push(e);added++}
+    }
+    if(!added&&!updated){flash(skipped?'Geen bruikbare check-ins gevonden in dit bestand.':'Het bestand bevat geen check-ins.');return}
+    entries.sort((a,b)=>a.date<b.date?-1:1);persist();
+    const cur=entries.find(x=>x.date===selDate)||entries[entries.length-1];
+    draft=cur.s.slice();if($('note'))$('note').value=cur.n||'';
+    syncRadios();updateLive();renderProgress();
+    flash('Geïmporteerd: '+added+' toegevoegd, '+updated+' bijgewerkt'+(skipped?', '+skipped+' overgeslagen':'')+'.');
+  }catch(e){flash('Importeren is niet gelukt. Is dit een Excel-bestand uit deze app?')}
+}
+const importFile=$('importFile');
+[$('importBtn'),$('importBtn2')].forEach(b=>b&&b.addEventListener('click',()=>{importFile.value='';importFile.click()}));
+importFile.addEventListener('change',()=>{const f=importFile.files&&importFile.files[0];if(f)importExcel(f)});
 
 /* ---------- installeren als app ---------- */
 const INSTALL_KEY='welzijnscheck:install-hidden';
