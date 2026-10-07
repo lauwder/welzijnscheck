@@ -1,5 +1,5 @@
 /* Welzijnscheck service worker: maakt de app offline bruikbaar. Verhoog VERSION bij elke wijziging. */
-const VERSION='v2';
+const VERSION='v3';
 const CACHE='welzijnscheck-'+VERSION;
 const ASSETS=["./", "./index.html", "./manifest.webmanifest", "./xlsx.full.min.js", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png", "./fonts/bricolage-grotesque-latin-400-normal.woff2", "./fonts/bricolage-grotesque-latin-ext-400-normal.woff2", "./fonts/bricolage-grotesque-latin-600-normal.woff2", "./fonts/bricolage-grotesque-latin-ext-600-normal.woff2", "./fonts/bricolage-grotesque-latin-800-normal.woff2", "./fonts/bricolage-grotesque-latin-ext-800-normal.woff2", "./fonts/figtree-latin-400-normal.woff2", "./fonts/figtree-latin-ext-400-normal.woff2", "./fonts/figtree-latin-500-normal.woff2", "./fonts/figtree-latin-ext-500-normal.woff2", "./fonts/figtree-latin-600-normal.woff2", "./fonts/figtree-latin-ext-600-normal.woff2"];
 self.addEventListener('install',e=>{

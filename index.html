@@ -14,6 +14,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Welzijn">
+<script>(function(){try{var t=localStorage.getItem('welzijnscheck:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
 <style>
 @font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:400;font-display:swap;src:url(./fonts/bricolage-grotesque-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
 @font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:400;font-display:swap;src:url(./fonts/bricolage-grotesque-latin-ext-400-normal.woff2) format('woff2');unicode-range:U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF}
@@ -38,6 +39,12 @@
 .install p strong{color:var(--ink)}
 .install .acts{display:flex;gap:8px;align-items:center}
 .install kbd{font:inherit;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--ink)}
+
+.themebox{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-top:18px;color:var(--muted);font-size:.9rem}
+.themebox .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.themebox .seg button{background:none;border:0;color:var(--muted);padding:8px 14px;min-height:40px;font:inherit;font-size:.9rem;cursor:pointer}
+.themebox .seg button[aria-pressed="true"]{background:var(--ink);color:var(--on-ink)}
+.themebox .seg button:focus-visible{outline:3px solid var(--focus);outline-offset:-3px}
 </style>
 <style>
 :root{
@@ -349,6 +356,14 @@ details.look summary:focus-visible{outline:3px solid var(--focus);outline-offset
     <div class="acts">
       <button type="button" class="btn small" id="installBtn" hidden>Installeer als app</button>
       <button type="button" class="linkbtn" id="installDismiss">Verberg</button>
+    </div>
+  </div>
+  <div class="themebox" role="group" aria-label="Weergave">
+    <span>Weergave</span>
+    <div class="seg">
+      <button type="button" data-theme-choice="auto" aria-pressed="true">Automatisch</button>
+      <button type="button" data-theme-choice="light" aria-pressed="false">Licht</button>
+      <button type="button" data-theme-choice="dark" aria-pressed="false">Donker</button>
     </div>
   </div>
 
@@ -1003,6 +1018,23 @@ $('installDismiss').addEventListener('click',()=>{$('installBox').hidden=true;tr
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})});
 }
+
+/* ---------- weergave: automatisch / licht / donker ---------- */
+const THEME_KEY='welzijnscheck:theme';
+function applyTheme(t){
+  const root=document.documentElement;
+  if(t==='light'||t==='dark')root.setAttribute('data-theme',t);else root.removeAttribute('data-theme');
+  document.querySelectorAll('[data-theme-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themeChoice===(t||'auto'))));
+  const dark=t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m=>m.setAttribute('content',dark?'#0E1918':'#EDF2EF'));
+}
+(function(){let t=null;try{t=localStorage.getItem(THEME_KEY)}catch(e){}applyTheme(t)})();
+document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>{
+  const t=b.dataset.themeChoice;
+  try{if(t==='auto')localStorage.removeItem(THEME_KEY);else localStorage.setItem(THEME_KEY,t)}catch(e){}
+  applyTheme(t==='auto'?null:t);
+}));
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{let t=null;try{t=localStorage.getItem(THEME_KEY)}catch(e){}applyTheme(t)});
 })();
 </script>
 </body>
